@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLINCYTO 調配 Checklist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            /* 強制瀏覽器列印時保留底色、背景色與陰影 */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .max-w-3xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            
+            /* 列印時優化標題列外觀，並強制拉大與下方耗材清單的列印間距 */
+            header {
+                background: transparent !important;
+                border-bottom: none !important;
+                position: relative !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                margin-bottom: 2.5rem !important; /* 確保列印時標題與耗材清單間隔加大 */
+            }
+
+            /* 強制在列印時讓耗材清單維持橫向三格排列 */
+            #supplies-grid {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 1rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div class="max-w-3xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-slate-900 tracking-tight">BLINCYTO 調配說明</h1>
+                <p class="text-xs text-slate-500">CYCH.CD</p>
+            </div>
+            <button onclick="window.print()" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition no-print">
+                列印A4單張
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-6 pt-12 pb-8">
+        
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-8 no-print">
+            <h2 class="text-base font-bold text-slate-900 mb-6 flex items-center">
+                <span class="w-1.5 h-5 bg-blue-500 rounded-full mr-3"></span>
+                病人資訊與處方設定
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-600 mb-2">病人體重 (kg)</label>
+                    <input type="number" id="weight" oninput="updateDoseOptions(); calculate();" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="請輸入體重...">
+                </div>
+                <div id="bsa-container" class="hidden">
+                    <label class="block text-sm font-semibold text-slate-600 mb-2">BSA (m²)</label>
+                    <input type="number" id="bsa" oninput="calculate()" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="請輸入BSA...">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-slate-600 mb-2">處方劑量</label>
+                    <div id="dose-options" class="flex flex-wrap gap-3 text-sm">
+                        <p class="text-slate-400 italic">請先輸入病人體重</p>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-slate-600 mb-2">輸注時間 (小時)</label>
+                    <input type="range" id="infusion-time" min="24" max="96" step="24" value="24" oninput="calculate()" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-xs text-slate-400 mt-2 font-medium">
+                        <span>24h</span><span>48h</span><span>72h</span><span>96h</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-orange-50 p-6 rounded-2xl shadow-sm border border-orange-100 mb-6">
+            <h3 class="text-base font-bold text-slate-900 mb-6 flex items-center">
+                <span class="w-1.5 h-5 bg-orange-500 rounded-full mr-3"></span>
+                準備耗材清單
+            </h3>
+            <div id="supplies-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 bg-white rounded-xl border border-orange-100/70 shadow-sm">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">BLINCYTO 小瓶</span>
+                    <span class="text-xl font-black text-red-500" id="req-vials">(未填寫病人資訊)</span>
+                </div>
+                <div class="p-4 bg-white rounded-xl border border-orange-100/70 shadow-sm">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">20mL 注射用水</span>
+                    <span class="text-xl font-black text-red-500" id="req-water-vials">(未填寫病人資訊)</span>
+                </div>
+                <div class="p-4 bg-white rounded-xl border border-orange-100/70 shadow-sm">
+                    <span class="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">硬 N/S 250mL</span>
+                    <span class="text-xl font-black text-slate-900">1 包</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            <h3 class="text-lg font-bold text-slate-900 mb-2">調配操作流程</h3>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h4 class="font-bold text-slate-800 mb-4 flex items-center">步驟 1: 準備輸液N/S袋</h4>
+                <ul class="space-y-3 text-slate-600 text-sm">
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-slate-300">準備270ml的N/S輸液袋</li>
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-slate-300">抽取5.5mL的溶液穩定劑(紅色瓶蓋)</li>
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-slate-300">將5.5mL的溶液穩定劑加入N/S 270ml輸液袋中</li>
+                </ul>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h4 class="font-bold text-slate-800 mb-4 flex items-center">步驟 2: 藥品重組</h4>
+                <ul class="space-y-3 text-slate-600 text-sm">
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-slate-300">抽取3mL注射用水 <span class="text-xs text-slate-400 ml-2">(需處理 <strong id="step2-vials" class="text-blue-600">0</strong> 瓶 BLINCYTO)</span></li>
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-slate-300">以3mL注射用水沿瓶壁緩慢注入，溶解BLINCYTO粉末(黃色瓶蓋)</li>
+                    <li class="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg ml-8 italic">(重組後為38.5mcg/3.08mL=12.5mcg/mL)</li>
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-slate-300">輕輕旋動，<span class="text-red-500 font-bold ml-1">切勿用力搖晃！</span></li>
+                </ul>
+            </div>
+
+            <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                <h4 class="font-bold text-blue-900 mb-3 flex items-center">步驟 3: 抽取重組藥液加入 IV 袋</h4>
+                <ul class="space-y-3 text-blue-900 text-sm">
+                    <li class="flex items-center flex-wrap gap-3">
+                        <div class="flex items-center">
+                            <input type="checkbox" class="mr-3 w-5 h-5 rounded border-blue-300 flex-shrink-0">
+                            <span>從重組好的BLINCYTO小瓶中抽出：</span>
+                        </div>
+                        <div class="bg-white border-2 border-blue-200 px-4 py-1.5 rounded-xl shadow-inner inline-flex items-baseline gap-1">
+                            <span class="text-2xl font-black text-blue-600" id="exact-volume">0</span>
+                            <span class="font-bold text-sm text-blue-800">mL</span>
+                        </div>
+                    </li>
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-blue-300">將抽出之藥液注入準備好的N/S袋中</li>
+                    <li class="flex items-center"><input type="checkbox" class="mr-3 w-5 h-5 rounded border-blue-300">輕輕混合避免起泡。丟棄剩餘小瓶。</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentDoseGroup = ""; // 用來記錄當前渲染的是兒童(bsa)還是成人組，避免重複刷掉狀態
+
+        function updateDoseOptions() {
+            const weight = parseFloat(document.getElementById('weight').value);
+            const bsaContainer = document.getElementById('bsa-container');
+            const doseOptionsDiv = document.getElementById('dose-options');
+
+            if (isNaN(weight) || weight <= 0) {
+                bsaContainer.classList.add('hidden');
+                doseOptionsDiv.innerHTML = `<p class="text-slate-400 italic">請先輸入病人體重</p>`;
+                currentDoseGroup = "";
+                return;
+            }
+
+            if (weight < 45) {
+                bsaContainer.classList.remove('hidden');
+                if (currentDoseGroup !== "child") {
+                    doseOptionsDiv.innerHTML = `
+                        <label class="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-blue-300">
+                            <input type="radio" name="doseType" value="5" onchange="calculate()"> <span class="ml-2 font-medium">5 mcg/m²/day</span>
+                        </label>
+                        <label class="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-blue-300">
+                            <input type="radio" name="doseType" value="15" onchange="calculate()"> <span class="ml-2 font-medium">15 mcg/m²/day</span>
+                        </label>
+                    `;
+                    currentDoseGroup = "child";
+                }
+            } else {
+                bsaContainer.classList.add('hidden');
+                if (currentDoseGroup !== "adult") {
+                    doseOptionsDiv.innerHTML = `
+                        <label class="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-blue-300">
+                            <input type="radio" name="doseType" value="9" onchange="calculate()"> <span class="ml-2 font-medium">9 mcg/day</span>
+                        </label>
+                        <label class="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-blue-300">
+                            <input type="radio" name="doseType" value="28" onchange="calculate()"> <span class="ml-2 font-medium">28 mcg/day</span>
+                        </label>
+                    `;
+                    currentDoseGroup = "adult";
+                }
+            }
+        }
+
+        function calculate() {
+            const weight = parseFloat(document.getElementById('weight').value);
+            const bsa = parseFloat(document.getElementById('bsa').value);
+            const doseType = document.querySelector('input[name="doseType"]:checked');
+            const hours = parseFloat(document.getElementById('infusion-time').value);
+            
+            const reqVialsEl = document.getElementById('req-vials');
+            const reqWaterVialsEl = document.getElementById('req-water-vials');
+
+            if (weight > 0 && doseType && (weight >= 45 || (!isNaN(bsa) && bsa > 0))) {
+                const doseRate = parseFloat(doseType.value);
+                const dailyDose = (weight < 45) ? (doseRate * bsa) : doseRate;
+                const totalDose = dailyDose * (hours / 24);
+                const volume = totalDose / 12.5;
+                const vials = Math.ceil(totalDose / 38.5);
+
+                // 計算成功：更換文字，並將顏色切換回深色字體
+                reqVialsEl.innerText = vials + " 盒";
+                reqVialsEl.className = "text-xl font-black text-slate-900";
+                
+                reqWaterVialsEl.innerText = Math.ceil((vials * 3) / 20) + " 支";
+                reqWaterVialsEl.className = "text-xl font-black text-slate-900";
+                
+                document.getElementById('step2-vials').innerText = vials;
+                document.getElementById('exact-volume').innerText = volume.toFixed(2);
+            } else {
+                // 資訊未填完：呈現紅色提示文字
+                reqVialsEl.innerText = "(未填寫病人資訊)";
+                reqVialsEl.className = "text-xl font-black text-red-500";
+                
+                reqWaterVialsEl.innerText = "(未填寫病人資訊)";
+                reqWaterVialsEl.className = "text-xl font-black text-red-500";
+                
+                document.getElementById('step2-vials').innerText = "0";
+                document.getElementById('exact-volume').innerText = "0";
+            }
+        }
+    </script>
+</body>
+</html>
